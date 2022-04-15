@@ -6,11 +6,16 @@ expression : identifier
            | literal
            | lambdaExpression
            | conditional
+           | letRec
            | procedureCall
            ; //todo
 
 literal : quotation | selfEvaluating;
-procedureCall : '(' expression expression* ')' ;
+procedureCall : '(' expression+ ')' ;
+
+letRec : '(' 'letrec*' '(' bindings=bindingSpec* ')' body ;
+
+bindingSpec : '(' var=Identifier expr=expression ')' ;
 
 selfEvaluating : bool | number; //todo
 
@@ -22,7 +27,7 @@ conditional : '(' 'if' test=expression ifTrue=expression ifFalse=expression? ')'
 
 lambdaExpression : '(' 'lambda' formals body ')' ;
 formals : '(' Identifier* ')' ; //todo
-body : expression* expression; //todo
+body : expression+ ; //todo
 
 datum : simpleDatum | compoundDatum ; //todo
 

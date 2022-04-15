@@ -1,8 +1,5 @@
 package io.github.kustosz.ponzi;
 
-import java.util.List;
-import java.util.Optional;
-
 sealed public interface Ast {
   record Call(Ast function, List<Ast> arguments) implements Ast {
   }
@@ -16,6 +13,12 @@ sealed public interface Ast {
   record Lambda(List<String> formals, List<Ast> statements, Ast returnExpr) implements Ast {
   }
 
-  record Conditional(Ast test, Ast ifTrue, Optional<Ast> ifFalse) implements Ast {
+  record Conditional(Ast test, Ast ifTrue, Option<Ast> ifFalse) implements Ast {
+  }
+
+  record LetRec(List<BindingSpec> bindings, List<Ast> statements, Ast returnExpr) implements Ast {
+  }
+
+  record BindingSpec(String identifier, Ast expr) {
   }
 }

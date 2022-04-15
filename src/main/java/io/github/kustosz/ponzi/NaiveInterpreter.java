@@ -1,7 +1,6 @@
 package io.github.kustosz.ponzi;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.stream.IntStream;
 
 public class NaiveInterpreter {
@@ -11,7 +10,7 @@ public class NaiveInterpreter {
   record Func(Ast.Lambda ast, Env scope) implements Value {
   }
 
-  record Number(int value) implements Value {
+  record Number(long value) implements Value {
   }
 
   record Boolean(boolean value) implements Value {
@@ -32,6 +31,12 @@ public class NaiveInterpreter {
 
       ret.declareBuiltin("*",
           arguments -> new Number(((Number) arguments.get(0)).value() * ((Number) arguments.get(1)).value()));
+
+      ret.declareBuiltin("+",
+          arguments -> new Number(((Number) arguments.get(0)).value() + ((Number) arguments.get(1)).value()));
+
+      ret.declareBuiltin("add",
+          arguments -> new Number(((Number) arguments.get(0)).value() + ((Number) arguments.get(1)).value()));
 
       ret.declareBuiltin("subtract",
           arguments -> new Number(((Number) arguments.get(0)).value() - ((Number) arguments.get(1)).value()));
@@ -86,14 +91,22 @@ public class NaiveInterpreter {
       case Ast.Conditional c -> {
         var test = interpret(c.test(), env);
         if (test.equals(new Boolean(false))) {
-          if (c.ifFalse().isPresent()) {
-            yield interpret(c.ifFalse().get(), env);
+          if (c.ifFalse() instanceof Option.Some<Ast> s) {
+            yield interpret(s.value(), env);
           } else {
             yield new NoValue();
           }
         } else {
           yield (interpret(c.ifTrue(), env));
         }
+      }
+
+      case Ast.LetRec block -> {
+        var newEnv = env.makeChild();
+        block.bindings()
+            .forEach(bind -> newEnv.declare(bind.identifier(), interpret(bind.expr(), newEnv)));
+        block.statements().forEach(bind -> interpret(bind, newEnv));
+        yield interpret(block.returnExpr(), newEnv);
       }
 
       case Ast.Call c -> {
@@ -110,10 +123,7 @@ public class NaiveInterpreter {
             f.ast().statements().forEach(stmt -> interpret(stmt, newEnv));
             yield interpret(f.ast().returnExpr(), newEnv);
           }
-          case BuiltinFunc f -> f.call(c.arguments()
-              .stream()
-              .map(arg -> interpret(arg, env))
-              .toList());
+          case BuiltinFunc f -> f.call(c.arguments().map(arg -> interpret(arg, env)));
           case default -> throw new RuntimeException("Expected a function but got " + func);
         };
       }

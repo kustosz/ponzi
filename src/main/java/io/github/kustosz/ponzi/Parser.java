@@ -9,14 +9,13 @@ import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Optional;
 
 public class Parser {
   private static class Visitor extends PonziBaseVisitor<Ast> {
     @Override
     public Ast visitProcedureCall(PonziParser.ProcedureCallContext ctx) {
       var exprs = ctx.expression().stream().map(this::visit).toList();
-      return new Ast.Call(exprs.get(0), exprs.stream().skip(1).toList());
+      return new Ast.Call(exprs.get(0), List.of(exprs.stream().skip(1).toList()));
     }
 
     @Override
@@ -32,9 +31,9 @@ public class Parser {
     @Override
     public Ast visitLambdaExpression(PonziParser.LambdaExpressionContext ctx) {
       var body = ctx.body().expression().stream().map(this::visit).toList();
-      var stmts = body.stream().limit(body.size() - 1).toList();
+      var stmts = List.of(body.stream().limit(body.size() - 1).toList());
       var retVal = body.get(body.size() - 1);
-      var formals = ctx.formals().Identifier().stream().map(ParseTree::getText).toList();
+      var formals = List.of(ctx.formals().Identifier().stream().map(ParseTree::getText).toList());
       return new Ast.Lambda(formals, stmts, retVal);
     }
 
@@ -42,8 +41,20 @@ public class Parser {
     public Ast visitConditional(PonziParser.ConditionalContext ctx) {
       var test = visit(ctx.test);
       var ifTrue = visit(ctx.ifTrue);
-      var ifFalse = Optional.ofNullable(ctx.ifFalse).map(this::visit);
+      var ifFalse = Option.of(ctx.ifFalse).map(this::visit);
       return new Ast.Conditional(test, ifTrue, ifFalse);
+    }
+
+    @Override
+    public Ast visitLetRec(PonziParser.LetRecContext ctx) {
+      var bindings = List.of(ctx.bindingSpec()
+          .stream()
+          .map(binding -> new Ast.BindingSpec(binding.var.getText(), visit(binding.expr)))
+          .toList());
+      var body = ctx.body().expression().stream().map(this::visit).toList();
+      var stmts = List.of(body.stream().limit(body.size() - 1).toList());
+      var retVal = body.get(body.size() - 1);
+      return new Ast.LetRec(bindings, stmts, retVal);
     }
   }
 
